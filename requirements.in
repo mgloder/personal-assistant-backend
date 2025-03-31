@@ -1,0 +1,8 @@
+fastapi==0.115.12
+uvicorn
+python-dotenv==1.0.0
+openai==1.69.0
+pydantic
+python-multipart
+openai-agents
+mcp==1.6.0
