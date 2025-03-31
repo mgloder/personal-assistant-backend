@@ -13,7 +13,7 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", os.getenv("SESSION_SECRET_KEY", "yo
 SESSION_COOKIE_MAX_AGE = 3600  # 1 hour
 
 # CORS Settings
-CORS_ORIGINS = ["http://localhost:3001"]
+CORS_ORIGINS = ["http://localhost:3001", "http://192.168.31.224:3001"]
 
 # OpenAI Settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
