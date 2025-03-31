@@ -47,6 +47,8 @@ idna==3.10
     #   anyio
     #   httpx
     #   requests
+itsdangerous==2.2.0
+    # via -r requirements.in
 jiter==0.9.0
     # via openai
 mcp==1.6.0
