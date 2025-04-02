@@ -7,3 +7,5 @@ python-multipart
 openai-agents
 mcp==1.6.0
 itsdangerous
+celery
+redis
