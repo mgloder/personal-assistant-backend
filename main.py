@@ -12,13 +12,15 @@ logging.basicConfig(
 
 app = FastAPI(title=API_TITLE)
 
-# Configure CORS
+# Configure CORS with more detailed settings
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Include routers
