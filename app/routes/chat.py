@@ -3,10 +3,9 @@ import logging
 from typing import Optional
 
 from agents import trace
-from fastapi import APIRouter, HTTPException, Depends, Cookie
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
-from ..config.settings import SESSION_COOKIE_MAX_AGE
 from ..models.chat import ChatRequest, ChatResponse
 from ..services.agent_service import AgentService
 
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/api")
 agent_service = AgentService()
 
 
-async def get_session(session_id: Optional[str] = Cookie(None)):
+async def get_session(session_id: Optional[str] = None):
     if not session_id:
         session_id = agent_service.get_or_create_session()
     return session_id
@@ -25,46 +24,36 @@ async def get_session(session_id: Optional[str] = Cookie(None)):
 
 @router.get("/")
 async def root():
-    return {"message": "Welcome to Little Dragon Assistant API"}
+    session_id = agent_service.get_or_create_session()
+    return {"message": "Welcome to Little Dragon Assistant API", "session_id": session_id}
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, session_id: str = Depends(get_session)):
-    """_summary_
+async def chat(request: ChatRequest):
+    """Handle chat requests with session management
 
     Args:
-        request (ChatRequest): _description_
-        session_id (str, optional): _description_. Defaults to Depends(get_session). session_id is also a conversation_id for tracing
-
-    Raises:
-        HTTPException: _description_
+        request (ChatRequest): The chat request containing the message and optional session_id
 
     Returns:
-        _type_: _description_
+        ChatResponse: The response containing the assistant's message and session ID
     """
     try:
+        # Get or create session ID from request
+        session_id = await get_session(request.session_id)
+
         # Get existing messages from session
         with trace("Little Dragon Assistant Conversation", group_id=session_id):
             response_content = await agent_service.get_agent_response(conversation_id=session_id,
                                                                     request=request)
 
-            # Create response with session cookie
+            # Create response with session ID
             response_data = ChatResponse(
                 response=response_content,
                 session_id=session_id
             )
 
-        # Set session cookie
-        response = JSONResponse(content=response_data.dict())
-        response.set_cookie(
-            key="session_id",
-            value=session_id,
-            httponly=True,
-            max_age=SESSION_COOKIE_MAX_AGE,
-            samesite="lax"
-        )
-
-        return response
+        return response_data
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
