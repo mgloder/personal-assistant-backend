@@ -27,12 +27,18 @@ class AgentService:
         return self.chat_sessions.get(session_id, [])
 
     async def get_agent_response(self, conversation_id: str, request: ChatRequest):
+        input_messages = await self.get_context(conversation_id, request)
+        new_result = await Runner.run(self.agent, input_messages)
+        self.chat_sessions[conversation_id] = new_result
+        return new_result.final_output
+
+    async def get_context(self, conversation_id, request, records_limit=10):
+        """filter top 10 records as context"""
         history_run_result = self.chat_sessions.get(conversation_id, None)
         new_message = [{"role": request.message.role, "content": request.message.content}]
         if history_run_result is not None:
             input_messages = history_run_result.to_input_list() + new_message
         else:
             input_messages = new_message
-        new_result = await Runner.run(self.agent, input_messages)
-        self.chat_sessions[conversation_id] = new_result
-        return new_result.final_output
+
+        return input_messages[:records_limit]
