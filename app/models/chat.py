@@ -1,23 +1,20 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
-class ChatMessage(BaseModel):
+class Message(BaseModel):
     role: str
     content: str
 
 
 class ChatRequest(BaseModel):
-    message: ChatMessage
-    session_id: Optional[str] = None
+    message: Message
 
 
 class ChatResponse(BaseModel):
-    response: str
-    session_id: str
+    message: str
+    user_id: int
 
 
 class AssistantContext(BaseModel):
-    session_id: str
+    user_id: int
     assistant_name: str

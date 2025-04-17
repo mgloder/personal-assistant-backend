@@ -1,16 +1,14 @@
-from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from ..config.database import get_db
 from ..models.user import User
-from ..schemas.user import UserCreate, Token, User as UserSchema
+from ..schemas.user import UserCreate, User as UserSchema
 from ..utils.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
     get_current_user
 )
 
@@ -19,6 +17,10 @@ router = APIRouter()
 # Add a new model for email lookup
 class EmailLookup(BaseModel):
     email: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 @router.post("/user-by-email", response_model=UserSchema)
 def get_user_by_email(email_lookup: EmailLookup, db: Session = Depends(get_db)):
@@ -60,25 +62,30 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
-@router.post("/token", response_model=Token)
-async def login_for_access_token(
-        form_data: OAuth2PasswordRequestForm = Depends(),
+@router.post("/login")
+async def login_json(
+        login_data: LoginRequest,
         db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    user = db.query(User).filter(User.email == login_data.email).first()
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password"
         )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "success": True,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username
+        }
+    }
 
-@router.get("/me", response_model=UserSchema)
+@router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
