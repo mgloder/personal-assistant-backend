@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..config.database import get_db
 from ..config.settings import SESSION_SECRET
 from ..models.user import User
+from ..models.token import BlacklistedToken
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -35,6 +36,34 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SESSION_SECRET, algorithm=ALGORITHM)
     return encoded_jwt
 
+def is_token_blacklisted(token: str, db: Session) -> bool:
+    """Check if a token is blacklisted."""
+    blacklisted_token = db.query(BlacklistedToken).filter(
+        BlacklistedToken.token == token,
+        BlacklistedToken.is_revoked == True
+    ).first()
+    return blacklisted_token is not None
+
+def blacklist_token(token: str, db: Session) -> None:
+    """Add a token to the blacklist."""
+    try:
+        # Decode the token to get its expiration
+        payload = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        exp_timestamp = payload.get("exp")
+        if exp_timestamp:
+            expires_at = datetime.fromtimestamp(exp_timestamp)
+            
+            # Create a new blacklisted token record
+            blacklisted_token = BlacklistedToken(
+                token=token,
+                expires_at=expires_at
+            )
+            db.add(blacklisted_token)
+            db.commit()
+    except JWTError:
+        # If token is invalid, we don't need to blacklist it
+        pass
+
 async def get_current_user(request: Request, token: Optional[HTTPBearer] = Depends(security), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,6 +80,14 @@ async def get_current_user(request: Request, token: Optional[HTTPBearer] = Depen
             raise credentials_exception
     else:
         token_str = token.credentials
+
+    # Check if token is blacklisted
+    if is_token_blacklisted(token_str, db):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     try:
         payload = jwt.decode(token_str, SESSION_SECRET, algorithms=[ALGORITHM])

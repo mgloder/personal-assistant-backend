@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,18 +9,22 @@ from ..utils.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
-    get_current_user
+    get_current_user,
+    blacklist_token
 )
 
 router = APIRouter()
+
 
 # Add a new model for email lookup
 class EmailLookup(BaseModel):
     email: str
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
+
 
 @router.post("/user-by-email", response_model=UserSchema)
 def get_user_by_email(email_lookup: EmailLookup, db: Session = Depends(get_db)):
@@ -31,6 +35,7 @@ def get_user_by_email(email_lookup: EmailLookup, db: Session = Depends(get_db)):
             detail="User not found"
         )
     return user
+
 
 @router.post("/register", response_model=UserSchema)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -62,6 +67,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+
 @router.post("/login")
 async def login_json(
         login_data: LoginRequest,
@@ -85,6 +91,30 @@ async def login_json(
             "username": user.username
         }
     }
+
+
+@router.post("/logout")
+async def logout(
+        request: Request,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Logout the current user and blacklist their token.
+    This endpoint is protected and requires authentication.
+    """
+    # Get the token from the request header
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        # Add the token to the blacklist
+        blacklist_token(token, db)
+
+    return {
+        "success": True,
+        "message": "Successfully logged out"
+    }
+
 
 @router.get("/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
