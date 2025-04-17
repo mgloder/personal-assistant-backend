@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-from app.routes import chat
+from app.routes import chat, auth
 from app.config.settings import API_TITLE, CORS_ORIGINS
 
 # Configure logging
@@ -25,6 +25,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat.router)
+app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 
 if __name__ == "__main__":
     import uvicorn
