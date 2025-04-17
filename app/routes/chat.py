@@ -11,7 +11,7 @@ from ..utils.auth import get_current_user
 # Configure logging
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 agent_service = AgentService()
 
 

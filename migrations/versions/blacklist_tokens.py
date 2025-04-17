@@ -1,7 +1,7 @@
 """create blacklisted_tokens table
 
 Revision ID: blacklist_tokens
-Revises: create_users_table
+Revises: 20240417_initial
 Create Date: 2024-04-17 12:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'blacklist_tokens'
-down_revision = 'create_users_table'
+down_revision = '20240417_initial'
 branch_labels = None
 depends_on = None
 

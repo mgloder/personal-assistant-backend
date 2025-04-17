@@ -43,7 +43,7 @@ async def log_requests(request: Request, call_next):
 
 # Include routers
 logger.debug("Including routers: chat, auth")
-app.include_router(chat.router)
+app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 
 
