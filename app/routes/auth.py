@@ -26,17 +26,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-@router.post("/user-by-email", response_model=UserSchema)
-def get_user_by_email(email_lookup: EmailLookup, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == email_lookup.email).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    return user
-
-
 @router.post("/register", response_model=UserSchema)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     # Check if username already exists
@@ -114,8 +103,3 @@ async def logout(
         "success": True,
         "message": "Successfully logged out"
     }
-
-
-@router.get("/me")
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user

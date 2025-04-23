@@ -63,17 +63,3 @@ async def chat(
             status_code=500,
             detail=f"An error occurred while processing your request: {str(e)}"
         )
-
-
-@router.get("/messages")
-async def get_messages(current_user: User = Depends(get_current_user)):
-    """Get chat history for the authenticated user."""
-    try:
-        messages = agent_service.get_session_messages(current_user.id)
-        return {"messages": messages}
-    except Exception as e:
-        logger.error(f"Error getting messages: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while getting messages: {str(e)}"
-        )
