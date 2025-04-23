@@ -1,7 +1,8 @@
 import uuid
-from typing import List, Dict
+from typing import List, Dict, AsyncGenerator
 
 from agents import Agent, Runner, RunResult
+from openai.types.responses import ResponseTextDeltaEvent
 
 from ..config.settings import (
     OPENAI_MODEL
@@ -28,12 +29,18 @@ class AgentService:
         """Get messages for a specific user."""
         return self.chat_sessions.get(user_id, [])
 
-    async def get_agent_response(self, user_id: int, request: ChatRequest):
-        """Get agent response for a specific user."""
+    async def get_agent_response(self, user_id: int, request: ChatRequest) -> AsyncGenerator[str, None]:
+        """Get agent response for a specific user as a streaming response."""
         input_messages = await self.get_context(user_id, request)
-        new_result = await Runner.run(self.agent, input_messages)
-        self.chat_sessions[user_id] = new_result
-        return new_result.final_output
+        stream_result = Runner.run_streamed(self.agent, input=input_messages)
+        
+        # Store the final result for context in future interactions
+        self.chat_sessions[user_id] = stream_result
+        
+        # Stream the response chunks
+        async for event in stream_result.stream_events():
+            if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                yield event.data.delta
 
     async def get_context(self, user_id: int, request: ChatRequest, records_limit=10):
         """Get context for a specific user, filtering top records."""

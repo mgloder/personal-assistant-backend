@@ -1,7 +1,9 @@
 import logging
+from typing import AsyncGenerator
 
 from agents import trace
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 
 from ..models.chat import ChatRequest, ChatResponse
 from ..models.user import User
@@ -26,36 +28,38 @@ async def root():
     return {"message": "Welcome to Little Dragon Assistant API"}
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat")
 async def chat(
         request: ChatRequest,
         current_user: User = Depends(get_current_user)
 ):
-    """Handle chat requests with user authentication
+    """Handle chat requests with user authentication and stream the response
 
     Args:
         request (ChatRequest): The chat request containing the message
         current_user (User): The authenticated user
 
     Returns:
-        ChatResponse: The response containing the assistant's message
+        StreamingResponse: A streaming response containing the assistant's message chunks
     """
     try:
         # Get or create session for the user
         user_id = current_user.id
 
-        # Get existing messages from session
-        with trace("Little Dragon Assistant Conversation", group_id=str(user_id)):
-            response_content = await agent_service.get_agent_response(
-                user_id=user_id,
-                request=request
-            )
+        # Create a generator function to stream the response
+        async def stream_response() -> AsyncGenerator[str, None]:
+            with trace("Little Dragon Assistant Conversation", group_id=str(user_id)):
+                async for chunk in agent_service.get_agent_response(
+                    user_id=user_id,
+                    request=request
+                ):
+                    yield f"data: {chunk}\n\n"
 
-            # Create response
-            return ChatResponse(
-                message=response_content,
-                user_id=user_id
-            )
+        # Return a streaming response
+        return StreamingResponse(
+            stream_response(),
+            media_type="text/event-stream"
+        )
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
