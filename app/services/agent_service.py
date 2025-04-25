@@ -51,4 +51,4 @@ class AgentService:
         else:
             input_messages = new_message
 
-        return input_messages[:records_limit]
+        return input_messages[-records_limit:]
