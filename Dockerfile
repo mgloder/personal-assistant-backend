@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
 # Create a non-root user
 RUN useradd -m backend
 
+# Create .mem0 directory with proper permissions
+RUN mkdir -p /home/backend/.mem0 && chown -R backend:backend /home/backend/.mem0
+
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

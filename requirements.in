@@ -16,3 +16,5 @@ python-jose[cryptography]
 alembic
 email-validator
 mem0ai
+mcp
+requests
